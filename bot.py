@@ -9,6 +9,7 @@ import asyncio
 import yt_dlp
 from collections import deque
 
+
 load_dotenv() 
 
 intents = discord.Intents.default()
@@ -62,7 +63,10 @@ async def ping(ctx):
 # TESTE BASICO DE OI
 @bot.command()
 async def ola(ctx):
-    await ctx.send(f'Oi pia {ctx.author.mention}!')
+    
+    listaOlas = [f"Oi pia {ctx.author.mention}!", "DAE PIA COMO QUE VC TÁ? HEIN {ctx.author.mention}", "não to afim de conversar com vc", "oi", "HAHAHAHA dae ${ctx.author.mention}!", "tchau", "oi piazinho feio {ctx.author.mention}", "192.168.0.131 Prudentópolis Paraná Brasil", "OIIIIIIIIIIIIIIIIIIIIIII {ctx.author.mention}", "hello people", "A familia moreira sabe de algo", "👹🤯😆😆😆", "bernardo tendo crise de ansiedade no bloco 2", "aah command 💀", "Você sabia que o comando '.ola' tem mais de 20 respostas diferentes? essa é uma delas parabéns pia vc é muito sortudo.", ":smorc:", "Oque é oque é! Um pontinho laranja que mora perto da instituição escolar denominada 'Nosso Futuro'?", "MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON", "#include <iostream> \n int main(){ \n cout << 'ola ${ctx.author.mention}'; \n return 1 \n }"]
+    mensagem = random.choice(listaOlas)
+    await ctx.send(mensagem)
 
 
 # __________________________________________________________________________________________________________
@@ -274,6 +278,7 @@ async def help(ctx, categoria=None):
         embed.add_field(name=".ping", value="Teste de conexão", inline=False)
         embed.add_field(name=".ola", value="Cumprimento amigável", inline=False)
         embed.add_field(name=".intruder @user1 @user2...", value="Sorteia times para Intruder", inline=False)
+        embed.add_field(name=".falar <mensagem>", value="Bot entra na call e fala a mensagem com TTS", inline=False)
 
     elif categoria.lower() == "info":
         embed = discord.Embed(title="⚙️ INFO", color=0x7289da)
@@ -286,6 +291,8 @@ async def help(ctx, categoria=None):
         embed.description = "Categorias: musica, diversidade, info"
 
     await ctx.send(embed=embed)
+
+
 
 
 if __name__ == '__main__':
