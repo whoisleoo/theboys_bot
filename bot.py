@@ -10,6 +10,8 @@ import asyncio
 import yt_dlp
 from collections import deque
 import google.generativeai as genai
+import json
+from datetime import datetime
 
 load_dotenv() 
 
@@ -39,6 +41,62 @@ Sempre que esses nomes forem mencionados, comente sobre seus sufixos, todos est�
 # Configuração do modelo Gemini
 model = genai.GenerativeModel(model_name="gemini-2.5-pro",
                               system_instruction=SYSTEM_INSTRUCTION)
+
+# Sistema de contexto das conversas
+CONTEXT_FILE = "conversation_context.json"
+MAX_CONTEXT_MESSAGES = 250
+
+def load_conversation_context():
+    """Carrega o contexto das conversas do arquivo JSON"""
+    try:
+        if os.path.exists(CONTEXT_FILE):
+            with open(CONTEXT_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        print(f"Erro ao carregar contexto: {e}")
+        return []
+
+def save_conversation_context(context):
+    """Salva o contexto das conversas no arquivo JSON"""
+    try:
+        with open(CONTEXT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(context, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Erro ao salvar contexto: {e}")
+
+def add_to_context(user_message, bot_response, user_id, username):
+    """Adiciona uma nova conversa ao contexto"""
+    context = load_conversation_context()
+    
+    # Adiciona nova conversa
+    conversation = {
+        "timestamp": datetime.now().isoformat(),
+        "user_id": str(user_id),
+        "username": username,
+        "user_message": user_message,
+        "bot_response": bot_response
+    }
+    
+    context.append(conversation)
+    
+    # Mantém apenas as últimas MAX_CONTEXT_MESSAGES conversas
+    if len(context) > MAX_CONTEXT_MESSAGES:
+        context = context[-MAX_CONTEXT_MESSAGES:]
+    
+    save_conversation_context(context)
+    return context
+
+def get_recent_context(user_id=None, limit=10):
+    """Retorna o contexto recente das conversas"""
+    context = load_conversation_context()
+    
+    # Filtra por usuário se especificado
+    if user_id:
+        context = [conv for conv in context if conv.get('user_id') == str(user_id)]
+    
+    # Retorna as últimas conversas
+    return context[-limit:] if context else []
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -119,6 +177,7 @@ async def nf(ctx):
 async def papo(ctx, *, prompt):
     """Comando para conversar com o Mangotron usando IA"""
     
+    
     if ctx.author == bot.user:
         return
     
@@ -131,15 +190,101 @@ async def papo(ctx, *, prompt):
     
     async with ctx.channel.typing():
         try:
-            response = await model.generate_content_async(prompt)
+            # Carrega o contexto recente do usuário
+            recent_context = get_recent_context(user_id=ctx.author.id, limit=5)
             
+            # Cria o histórico para o Gemini baseado no contexto
+            history = []
+            for conv in recent_context:
+                history.append({
+                    "role": "user",
+                    "parts": [conv["user_message"]]
+                })
+                history.append({
+                    "role": "model", 
+                    "parts": [conv["bot_response"]]
+                })
+            
+            # Inicia conversa com histórico
+            convo = model.start_chat(history=history)
+            await convo.send_message_async(prompt)
+            response = convo.last
+            
+            # Salva a conversa no contexto
+            add_to_context(
+                user_message=prompt,
+                bot_response=response.text,
+                user_id=ctx.author.id,
+                username=ctx.author.display_name
+            )
+
             await ctx.send(response.text)
             print(f"Resposta enviada: {response.text[:50]}...")
             
         except Exception as e:
+            
             await ctx.send(f"Ocorreu um erro ao processar sua solicitação: {e}")
             print(f"Erro ao gerar resposta: {e}")
 
+@bot.command()
+async def contexto(ctx, usuario=None):
+    """Mostra o contexto recente das conversas"""
+    if not usuario:
+        # Mostra contexto geral
+        context = get_recent_context(limit=10)
+        if not context:
+            await ctx.send("Não há contexto salvo ainda, pia!")
+            return
+        
+        embed = discord.Embed(
+            title="🧠 Contexto Geral das Conversas",
+            description=f"Últimas {len(context)} conversas:",
+            color=0x7289da
+        )
+        
+        for i, conv in enumerate(context[-5:], 1):  # Mostra apenas as últimas 5
+            embed.add_field(
+                name=f"Conversa {i} - {conv['username']}",
+                value=f"**Usuário:** {conv['user_message'][:100]}{'...' if len(conv['user_message']) > 100 else ''}\n**Bot:** {conv['bot_response'][:100]}{'...' if len(conv['bot_response']) > 100 else ''}",
+                inline=False
+            )
+        
+        await ctx.send(embed=embed)
+    else:
+        # Mostra contexto de usuário específico
+        try:
+            user_id = int(usuario.replace('<@', '').replace('>', ''))
+            context = get_recent_context(user_id=user_id, limit=10)
+            
+            if not context:
+                await ctx.send(f"Não há contexto salvo para {usuario}, pia!")
+                return
+            
+            embed = discord.Embed(
+                title=f"🧠 Contexto de {usuario}",
+                description=f"Últimas {len(context)} conversas:",
+                color=0x7289da
+            )
+            
+            for i, conv in enumerate(context[-5:], 1):
+                embed.add_field(
+                    name=f"Conversa {i}",
+                    value=f"**Usuário:** {conv['user_message'][:100]}{'...' if len(conv['user_message']) > 100 else ''}\n**Bot:** {conv['bot_response'][:100]}{'...' if len(conv['bot_response']) > 100 else ''}",
+                    inline=False
+                )
+            
+            await ctx.send(embed=embed)
+        except:
+            await ctx.send("Formato inválido! Use `.contexto` ou `.contexto @usuario`")
+
+@bot.command()
+async def limpar_contexto(ctx):
+    """Limpa todo o contexto das conversas"""
+    try:
+        save_conversation_context([])
+        await ctx.send("🧹 Contexto limpo com sucesso, pia!")
+    except Exception as e:
+        await ctx.send(f"Erro ao limpar contexto: {e}")
 # __________________________________________________________________________________________________________
 
 #                                 FUNÇÃO PRA ALEATORIZAR UM PIAZINHO
@@ -343,7 +488,7 @@ async def help(ctx, categoria=None):
     elif categoria.lower() == "info":
         embed = discord.Embed(title="⚙️ INFO", color=0x7289da)
         embed.add_field(name="MANGOTRON", value="Esse é um bot desenvolvido especialmente pro servidor do discord TheBoys.", inline=False)
-        embed.add_field(name="DESENVOLVEDORES", value="Feito com 💖 pela equipe do T.I do The Boys.", inline=False)
+        embed.add_field(name="DESENVOLVEDORES", value="Feito com odio pela equipe do T.I do The Boys.", inline=False)
 
 
     else:
