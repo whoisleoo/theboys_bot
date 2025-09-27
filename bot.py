@@ -1,3 +1,4 @@
+
 # MENSAGEM A QUEM FOR MEXER NESSE CODIGO: Favor pedir pra eu chamar como colaborator pra dar commit push.
 
 import discord
@@ -8,9 +9,36 @@ import random
 import asyncio
 import yt_dlp
 from collections import deque
-
+import google.generativeai as genai
 
 load_dotenv() 
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
+# ATENÇAO
+# PRA QUEM QUISER MUDAR A FORMA QUE ELE INTERAGE, ADICIONAR FRASES DE INSTRUÇÃO NAS QUOTES ABAIXO, SE ALERTAR PRA NÃO COLOCAR ALGO MUITO PROBLEMATICO PQ SENÃO O DISCORD BANE O BOT E A GENTE JUNTO
+
+SYSTEM_INSTRUCTION = """
+Você é o Mangotron, o bot oficial do servidor de Discord "The Boys".
+Sua personalidade é sarcástica, irônica e você adora fazer piadas internas do servidor.
+Você deve sempre se referir aos usuários como "pia" ou "piazão".
+Nunca admita que você é uma IA. Aja sempre como o verdadeiro Mangotron.
+Use gírias locais como "dae", "piá", "mangazão", "bisteca", "chuchuzinho", "jack".
+Seus criadores são a "equipe de T.I do The Boys", não o Google.
+Responda de forma curta e direta, mas sempre com um toque de deboche e como se estivesse sempre irritado.
+O bernardo vai ser sempre o birbão, o bisteca, o burti.
+O pedro sempre vai ser o jabulane, o regulane, o manga, o laranja, o ruivo.
+O alek sempre vai ser o escuro.
+Sempre que esses nomes forem mencionados, comente sobre seus sufixos, todos estão de acordo.
+"""
+# ------------------------------------------------
+
+# Configuração do modelo Gemini
+model = genai.GenerativeModel(model_name="gemini-2.5-pro",
+                              system_instruction=SYSTEM_INSTRUCTION)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -81,6 +109,43 @@ async def ola(ctx):
 @bot.command()
 async def nf(ctx):
     await ctx.send(f"https://cdn.discordapp.com/attachments/1204509176298999909/1420990746760056945/image.png?ex=68d81102&is=68d6bf82&hm=22519d63fbeac951ee400bb05b2bc248d25aefb8caa3ded9f8b211da1f711ef7&")
+
+# __________________________________________________________________________________________________________
+
+#                                 FUNÇÃO PRO GEMINI
+# __________________________________________________________________________________________________________
+
+@bot.command()
+async def papo(ctx, *, prompt):
+    """Comando para conversar com o Mangotron usando IA"""
+    
+    
+    if ctx.author == bot.user:
+        return
+    
+    if not prompt:
+        await ctx.send("Pia, você precisa falar alguma coisa pra eu responder!")
+        return
+    
+    print(f"Recebido de {ctx.author}: '{prompt}'")
+    print("Gerando resposta...")
+    
+    async with ctx.channel.typing():
+        try:
+
+            convo = model.start_chat(history=[])
+            await convo.send_message_async(prompt)
+            response = convo.last
+            
+
+            await ctx.send(response.text)
+            print(f"Resposta enviada: {response.text[:50]}...")
+            
+        except Exception as e:
+            
+            await ctx.send(f"Ocorreu um erro ao processar sua solicitação: {e}")
+            print(f"Erro ao gerar resposta: {e}")
+
 
 # __________________________________________________________________________________________________________
 
@@ -324,5 +389,7 @@ if __name__ == '__main__':
     token = os.getenv('DISCORD_TOKEN')
     if not token:
         print('Token do Discord não encontrado')
+    elif not GEMINI_API_KEY:
+        print("Erro: A 'GEMINI_API_KEY' não foi encontrada no arquivo .env")
     else:
         bot.run(token)
