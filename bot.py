@@ -119,7 +119,6 @@ async def nf(ctx):
 async def papo(ctx, *, prompt):
     """Comando para conversar com o Mangotron usando IA"""
     
-    
     if ctx.author == bot.user:
         return
     
@@ -132,25 +131,20 @@ async def papo(ctx, *, prompt):
     
     async with ctx.channel.typing():
         try:
-
-            convo = model.start_chat(history=[])
-            await convo.send_message_async(prompt)
-            response = convo.last
+            response = await model.generate_content_async(prompt)
             
-
             await ctx.send(response.text)
             print(f"Resposta enviada: {response.text[:50]}...")
             
         except Exception as e:
-            
             await ctx.send(f"Ocorreu um erro ao processar sua solicitação: {e}")
             print(f"Erro ao gerar resposta: {e}")
-
 
 # __________________________________________________________________________________________________________
 
 #                                 FUNÇÃO PRA ALEATORIZAR UM PIAZINHO
 # __________________________________________________________________________________________________________
+
 @bot.command()
 async def intruder(ctx, *members):
     if len(members) < 2:
@@ -161,6 +155,7 @@ async def intruder(ctx, *members):
         )
         await ctx.send(embed=embed)
         return
+    
     jogadores = list(set(members))
     random.shuffle(jogadores) #randomiza os pia
 
@@ -171,9 +166,6 @@ async def intruder(ctx, *members):
     if len(jogadores) % 2 != 0:
         amigos.append(jogadores[-1])
 
-        porcosBonitos = "\n".join([f"🔸 {jogadores}" for jogadores in porcos])
-        amigosBonitos = "\n".join([f"🔹 {jogadores}" for jogadores in amigos])
-
     embed = discord.Embed(
         title="INTRUDER SORTING SYSTEM",
         description=f"Pronto, os **AMIGOS** e os **PORCOS** agora estão divididos em **dois times!**",
@@ -181,18 +173,16 @@ async def intruder(ctx, *members):
     )
 
     embed.add_field(
-      name="🐖 PORCOS",
-      value="\n".join([f"🔸 {jogador}" for jogador in
-  porcos]),
-      inline=True
-  )
+        name="🐖 PORCOS",
+        value="\n".join([f"🔸 {jogador}" for jogador in porcos]),
+        inline=True
+    )
 
     embed.add_field(
-      name="👹 AMIGOS",
-      value="\n".join([f"🔹 {jogador}" for jogador in
-    amigos]),
-      inline=True
-  )
+        name="👹 AMIGOS",
+        value="\n".join([f"🔹 {jogador}" for jogador in amigos]),
+        inline=True
+    )
 
     embed.add_field(name='\u200b', value='\u200b', inline=False) # quebra linha 
 
@@ -203,8 +193,6 @@ async def intruder(ctx, *members):
     )
 
     await ctx.send(embed=embed)
-
-
 
 
 # __________________________________________________________________________________________________________
@@ -230,7 +218,6 @@ async def play_next(ctx):
         is_playing = False
 
 
-
 # __________________________________________________________________________________________________________
 
 #                                 FUNÇÃO PRA TOCAR MÚSICA NO SERVER
@@ -252,27 +239,12 @@ async def play(ctx, *, query):
 
         ydl_opts = {
             'format': 'bestaudio/best',
-            'noplaylist': True,
             'quiet': True,
-            'no_warnings': True,
-            'extractaudio': True,
-            'audioformat': 'mp3',
-            'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-            'restrictfilenames': True,
-            'cookiefile': None,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['mweb', 'web']
-                }
-            }
+            'no_warnings': True
         }
 
         is_url = query.startswith('http://') or query.startswith('https://')
-
-        if not is_url:
-            search_query = f"ytsearch:{query}"
-        else:
-            search_query = query
+        search_query = query if is_url else f"ytsearch:{query}"
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(search_query, download=False)
@@ -287,15 +259,13 @@ async def play(ctx, *, query):
             music_queue.append(song)
             
             if not is_playing:
-                await ctx.send(f"Adicionado musica bonita à fila: **{title}** (Posição: {len(music_queue)})")
+                await ctx.send(f"Adicionado musica bonita à fila: **{title}**")
                 await play_next(ctx)
             else:
                 await ctx.send(f"Adicionado musica bonita à fila: **{title}** (Posição: {len(music_queue)})")
 
     except Exception as e:
-        await ctx.send(f"Erro horrivel encontrado: {e}") 
-
-
+        await ctx.send(f"Erro horrivel encontrado: {e}")
 # __________________________________________________________________________________________________________
 
 #                                 FUNÇÃO PRA PULAR A RESPECTIVA MÚSICA
@@ -368,7 +338,7 @@ async def help(ctx, categoria=None):
         embed.add_field(name=".ping", value="Teste de conexão", inline=False)
         embed.add_field(name=".ola", value="Cumprimento amigável", inline=False)
         embed.add_field(name=".intruder @user1 @user2...", value="Sorteia times para Intruder", inline=False)
-        embed.add_field(name=".falar <mensagem>", value="Bot entra na call e fala a mensagem com TTS", inline=False)
+        embed.add_field(name=".papo <mensagem>", value="Bot conversa com vc", inline=False)
 
     elif categoria.lower() == "info":
         embed = discord.Embed(title="⚙️ INFO", color=0x7289da)
