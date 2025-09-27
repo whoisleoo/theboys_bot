@@ -64,10 +64,23 @@ async def ping(ctx):
 @bot.command()
 async def ola(ctx):
     
-    listaOlas = [f"Oi pia {ctx.author.mention}!", "DAE PIA COMO QUE VC TÁ? HEIN {ctx.author.mention}", "não to afim de conversar com vc", "oi", "HAHAHAHA dae ${ctx.author.mention}!", "tchau", "oi piazinho feio {ctx.author.mention}", "192.168.0.131 Prudentópolis Paraná Brasil", "OIIIIIIIIIIIIIIIIIIIIIII {ctx.author.mention}", "hello people", "A familia moreira sabe de algo", "👹🤯😆😆😆", "bernardo tendo crise de ansiedade no bloco 2", "aah command 💀", "Você sabia que o comando '.ola' tem mais de 20 respostas diferentes? essa é uma delas parabéns pia vc é muito sortudo.", ":smorc:", "Oque é oque é! Um pontinho laranja que mora perto da instituição escolar denominada 'Nosso Futuro'?", "MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON", "#include <iostream> \n int main(){ \n cout << 'ola ${ctx.author.mention}'; \n return 1 \n }"]
+    listaOlas = [ 
+        f"Oi pia {ctx.author.mention}!", 
+        f"DAE PIA COMO QUE VC TÁ? HEIN {ctx.author.mention}", 
+        "não to afim de conversar com vc", "oi", f"HAHAHAHA dae ${ctx.author.mention}!", 
+        "tchau", f"oi piazinho feio {ctx.author.mention}", "192.168.0.131 Prudentópolis Paraná Brasil", 
+        f"OIIIIIIIIIIIIIIIIIIIIIII {ctx.author.mention}", "hello people", "A familia moreira sabe de algo", "👹🤯😆😆😆", 
+        "bernardo tendo crise de ansiedade no bloco 2", "aah command 💀", 
+        "Você sabia que o comando '.ola' tem mais de 20 respostas diferentes? essa é uma delas parabéns pia vc é muito sortudo.", 
+        ":smorc:", "Oque é oque é! Um pontinho laranja que mora perto da instituição escolar denominada 'Nosso Futuro'?", 
+        "MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON MANGATRON", 
+        f"#include <iostream> \n int main()\n cout << 'ola ${ctx.author.mention}'; \n return 1 \n "]
     mensagem = random.choice(listaOlas)
     await ctx.send(mensagem)
 
+@bot.command()
+async def nf(ctx):
+    await ctx.send(f"https://cdn.discordapp.com/attachments/1204509176298999909/1420990746760056945/image.png?ex=68d81102&is=68d6bf82&hm=22519d63fbeac951ee400bb05b2bc248d25aefb8caa3ded9f8b211da1f711ef7&")
 
 # __________________________________________________________________________________________________________
 
@@ -189,21 +202,33 @@ async def play(ctx, *, query):
             }
         }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"ytsearch:{query}", download=False)
-            url = info['entries'][0]['url']
-            title = info['entries'][0]['title']
+        is_url = query.startswith('http://') or query.startswith('https://')
 
-        song_info = {'url': url, 'title': title}
-        music_queue.append(song_info)
-
-        if not is_playing:
-            await play_next(ctx)
+        if not is_url:
+            search_query = f"ytsearch:{query}"
         else:
-            await ctx.send(f"Adicionado à fila: **{title}** (Posição: {len(music_queue)})")
+            search_query = query
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(search_query, download=False)
+            
+            if 'entries' in info:
+                info = info['entries'][0]
+
+            audio_url = info['url']
+            title = info.get('title', 'Título Incompreensível')
+            
+            song = {'url': audio_url, 'title': title}
+            music_queue.append(song)
+            
+            if not is_playing:
+                await ctx.send(f"Adicionado musica bonita à fila: **{title}** (Posição: {len(music_queue)})")
+                await play_next(ctx)
+            else:
+                await ctx.send(f"Adicionado musica bonita à fila: **{title}** (Posição: {len(music_queue)})")
 
     except Exception as e:
-        await ctx.send(f"Erro horrivel encontrado: {e}")
+        await ctx.send(f"Erro horrivel encontrado: {e}") 
 
 
 # __________________________________________________________________________________________________________
